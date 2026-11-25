@@ -48,16 +48,25 @@ jobs:
       - name: Prepare google-services, debug keystore, and env
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
           if [ ! -f app/google-services.json ] && [ -n "$GOOGLE_SERVICES_JSON" ]; then
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           fi
           if [ ! -f debug.keystore ]; then
-            if [ -f debug.keystore.base64 ]; then
+            if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
+              printf '%s' "$DEBUG_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > debug.keystore
+            elif [ -f debug.keystore.base64 ]; then
               tr -d '\r\n ' < debug.keystore.base64 | base64 -d > debug.keystore
             else
+              echo "::warning::debug.keystore.base64 tidak ada di repo dan secret DEBUG_KEYSTORE_BASE64 belum diset! Membuat keystore sementara (Google Sign-In & upgrade APK akan bermasalah)."
               keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
             fi
+          fi
+          SHA1_INFO=$(keytool -list -v -keystore debug.keystore -storepass android -alias androiddebugkey 2>/dev/null | grep -E "SHA1:|SHA256:" || true)
+          echo "$SHA1_INFO"
+          if ! echo "$SHA1_INFO" | grep -qi "6D:F9:80:00:6C:36:A7:E4:8B:5A:F9:3D:88:8A:16:CB:F1:B9:3D:83"; then
+            echo "::warning::SHA-1 keystore saat ini TIDAK cocok dengan google-services.json (6D:F9:80:00:6C:36:A7:E4:8B:5A:F9:3D:88:8A:16:CB:F1:B9:3D:83)!"
           fi
           if [ ! -f .env ] && [ -f .env.example ]; then
             cp .env.example .env

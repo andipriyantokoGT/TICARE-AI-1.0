@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
+import com.example.BuildConfig
 import com.example.data.model.UserRoleMode
 import com.example.data.repository.onGoogleSignInClicked
 import com.example.ui.theme.CleanWhite
@@ -336,6 +341,32 @@ fun AuthScreen(
                             }
                         }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                TextButton(
+                    onClick = {
+                        val releaseIntent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://github.com/andipriyantokoGT/TICARE-AI-1.0/releases/tag/latest-apk")
+                        )
+                        context.startActivity(releaseIntent)
+                    },
+                    modifier = Modifier.testTag("check_apk_update_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.SystemUpdate,
+                        contentDescription = "Cek Pembaruan APK",
+                        tint = CleanWhite.copy(alpha = 0.9f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Versi ${BuildConfig.VERSION_NAME} • Cek Pembaruan APK",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = CleanWhite.copy(alpha = 0.92f)
+                    )
                 }
             }
         }
