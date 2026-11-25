@@ -7,10 +7,18 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     name: Build Debug APK
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -22,21 +30,26 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Prepare debug keystore
-        run: |
-          if [ ! -f debug.keystore ]; then
-            if [ -f debug.keystore.base64 ]; then
-              base64 -d debug.keystore.base64 > debug.keystore
-            else
-              keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-            fi
-          fi
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Accept Android SDK licenses
         run: |
           SDK_DIR="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          if [ -n "$SDK_DIR" ] && [ -x "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
-            yes | "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          mkdir -p "$SDK_DIR/licenses"
+          printf 'y\n%.0s' {1..20} | sdkmanager --licenses > /dev/null || true
+
+      - name: Prepare debug keystore and env
+        run: |
+          if [ ! -f debug.keystore ]; then
+            if [ -f debug.keystore.base64 ]; then
+              tr -d '\r\n ' < debug.keystore.base64 | base64 -d > debug.keystore
+            else
+              keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            fi
+          fi
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            cp .env.example .env
           fi
 
       - name: Setup Gradle
@@ -45,7 +58,8 @@ jobs:
           gradle-version: '9.3.1'
 
       - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon
+        run: |
+          gradle assembleDebug --no-daemon --no-configuration-cache --max-workers=2 --stacktrace -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
 
       - name: Prepare APK file
         run: |
@@ -58,3 +72,12 @@ jobs:
           name: TICARE-AI-APK
           path: dist-apk/TICARE-AI-debug.apk
           retention-days: 30
+
+      - name: Publish Direct APK to GitHub Releases
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-apk
+          name: TICARE AI APK Terbaru
+          body: File APK siap install untuk aplikasi Android TICARE AI. Unduh file `TICARE-AI-debug.apk` di bawah ini langsung dari HP.
+          files: dist-apk/TICARE-AI-debug.apk
