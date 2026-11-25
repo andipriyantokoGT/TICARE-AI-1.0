@@ -75,6 +75,7 @@ import com.example.ui.theme.TextSecondary
 @Composable
 fun AuthScreen(
     onAuthSuccess: (UserRoleMode) -> Unit,
+    onPortalSelected: (UserRoleMode) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -270,6 +271,7 @@ fun AuthScreen(
                             onClick = {
                                 errorMessage = null
                                 isLoading = true
+                                onPortalSelected(selectedPortal)
                                 onGoogleSignInClicked(
                                     context = context,
                                     credentialManager = credentialManager,

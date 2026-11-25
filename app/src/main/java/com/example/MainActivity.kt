@@ -129,6 +129,9 @@ private fun SahabatAmanApp() {
         AuthScreen(
             onAuthSuccess = { chosenMode ->
                 requestedPortalMode = chosenMode
+            },
+            onPortalSelected = { chosenMode ->
+                requestedPortalMode = chosenMode
             }
         )
     } else {
