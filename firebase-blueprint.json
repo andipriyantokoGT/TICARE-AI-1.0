@@ -1,0 +1,218 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Profil sesi pengguna Sahabat Aman (siswa terverifikasi kode atau staf BK/wali kelas).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "className": { "type": "string" },
+        "preferredMode": { "type": "string", "enum": ["STUDENT", "COUNSELOR"] },
+        "linkedStudentCode": { "type": "string" },
+        "linkedStudentClass": { "type": "string" },
+        "assignedStaffClass": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "displayName", "preferredMode", "createdAt", "updatedAt"]
+    },
+    "StudentMaster": {
+      "title": "StudentMaster",
+      "description": "Database master siswa dengan kode samaran otomatis (contoh SW-8B-014) dan PIN akses.",
+      "type": "object",
+      "properties": {
+        "nisn": { "type": "string" },
+        "namaLengkap": { "type": "string" },
+        "kelas": { "type": "string" },
+        "kodeSiswa": { "type": "string" },
+        "pinAkses": { "type": "string" },
+        "claimedUid": { "type": "string" },
+        "createdByUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nisn", "namaLengkap", "kelas", "kodeSiswa", "pinAkses", "claimedUid", "createdByUid", "createdAt", "updatedAt"]
+    },
+    "StudentAccess": {
+      "title": "StudentAccess",
+      "description": "Indeks verifikasi privat NISN/Kode Siswa + PIN tanpa mengekspos nama asli.",
+      "type": "object",
+      "properties": {
+        "studentDocId": { "type": "string" },
+        "kodeSiswa": { "type": "string" },
+        "kelas": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdByUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentDocId", "kodeSiswa", "kelas", "active", "createdByUid", "createdAt"]
+    },
+    "EmergencyIdentityLog": {
+      "title": "EmergencyIdentityLog",
+      "description": "Log audit pembukaan identitas asli siswa oleh Guru BK pada kondisi darurat.",
+      "type": "object",
+      "properties": {
+        "reportId": { "type": "string" },
+        "ticketCode": { "type": "string" },
+        "studentCode": { "type": "string" },
+        "reason": { "type": "string" },
+        "openedByUid": { "type": "string" },
+        "openedByName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reportId", "ticketCode", "studentCode", "reason", "openedByUid", "openedByName", "createdAt"]
+    },
+    "BullyingReport": {
+      "title": "BullyingReport",
+      "description": "Laporan pengaduan perundungan siswa beserta kode siswa terverifikasi, triase AI, dan keputusan Guru BK.",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "ticketCode": { "type": "string" },
+        "studentCode": { "type": "string" },
+        "studentClassCode": { "type": "string" },
+        "privacyCodeOnly": { "type": "boolean" },
+        "category": { "type": "string", "enum": ["VERBAL", "FISIK", "SIBER", "SOSIAL", "LAINNYA"] },
+        "recipientType": { "type": "string", "enum": ["GURU_BK", "GURU_LAINNYA"] },
+        "assignedTeacherName": { "type": "string" },
+        "assignedTeacherRole": { "type": "string" },
+        "anonymous": { "type": "boolean" },
+        "studentName": { "type": "string" },
+        "studentClass": { "type": "string" },
+        "incidentTimeLabel": { "type": "string" },
+        "locationArea": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "chronology": { "type": "string" },
+        "evidenceNames": { "type": "array" },
+        "status": { "type": "string", "enum": ["BARU", "DIPROSES", "TINDAK_LANJUT", "SELESAI"] },
+        "stageIndex": { "type": "integer" },
+        "bkMessage": { "type": "string" },
+        "waliKelasNotes": { "type": "string" },
+        "aiSummary": { "type": "string" },
+        "aiPriority": { "type": "string", "enum": ["TINGGI", "SEDANG", "RENDAH"] },
+        "aiRecommendation": { "type": "string" },
+        "aiTrendNote": { "type": "string" },
+        "humanDecision": { "type": "string", "enum": ["MENUNGGU", "DISETUJUI", "DIMODIFIKASI", "DITOLAK"] },
+        "humanDecisionNote": { "type": "string" },
+        "emergencyRevealedName": { "type": "string" },
+        "emergencyRevealReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "reporterId",
+        "ticketCode",
+        "studentCode",
+        "studentClassCode",
+        "privacyCodeOnly",
+        "category",
+        "anonymous",
+        "incidentTimeLabel",
+        "locationArea",
+        "chronology",
+        "evidenceNames",
+        "status",
+        "stageIndex",
+        "aiPriority",
+        "humanDecision",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SosAlert": {
+      "title": "SosAlert",
+      "description": "Sinyal darurat SOS beserta kode siswa dan koordinat GPS.",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "studentCode": { "type": "string" },
+        "studentClassCode": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "locationLabel": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "hasGpsFix": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["AKTIF", "DITANGANI", "SELESAI"] },
+        "handledBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "reporterId",
+        "studentCode",
+        "studentClassCode",
+        "reporterName",
+        "locationLabel",
+        "latitude",
+        "longitude",
+        "hasGpsFix",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CounselingSession": {
+      "title": "CounselingSession",
+      "description": "Agenda jadwal konseling siswa dan pelacak progres pendampingan.",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "reportId": { "type": "string" },
+        "ticketCode": { "type": "string" },
+        "studentLabel": { "type": "string" },
+        "scheduleLabel": { "type": "string" },
+        "counselorName": { "type": "string" },
+        "stageIndex": { "type": "integer" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["TERJADWAL", "BERLANGSUNG", "SELESAI"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "reporterId",
+        "reportId",
+        "ticketCode",
+        "studentLabel",
+        "scheduleLabel",
+        "counselorName",
+        "stageIndex",
+        "notes",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Profil pengguna dan tautan kode siswa."
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/StudentMaster" },
+      "description": "Database master siswa dengan kode samaran dan PIN akses."
+    },
+    "/student_access/{accessId}": {
+      "schema": { "$ref": "#/entities/StudentAccess" },
+      "description": "Indeks verifikasi privat NISN/Kode Siswa + PIN tanpa mengekspos nama asli."
+    },
+    "/emergency_identity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/EmergencyIdentityLog" },
+      "description": "Catatan audit pembukaan identitas asli darurat oleh Guru BK."
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/BullyingReport" },
+      "description": "Koleksi laporan perundungan siswa, kode siswa, triase AI, dan keputusan Guru BK."
+    },
+    "/sos_alerts/{alertId}": {
+      "schema": { "$ref": "#/entities/SosAlert" },
+      "description": "Koleksi sinyal darurat SOS dengan kode siswa dan GPS."
+    },
+    "/counseling_sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/CounselingSession" },
+      "description": "Koleksi jadwal konseling dan progres tindak lanjut."
+    }
+  }
+}

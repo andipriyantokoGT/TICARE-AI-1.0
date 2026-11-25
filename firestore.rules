@@ -1,0 +1,311 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Bootstrapped staff check using verified email only (no get/exists inside list queries)
+    function isBootstrappedStaff() {
+      return isSignedIn() &&
+             'email_verified' in request.auth.token &&
+             request.auth.token.email_verified == true &&
+             'email' in request.auth.token &&
+             request.auth.token.email == 'andipriyantoko3@gmail.com';
+    }
+
+    // Full staff check for single-document operations
+    function isStaff() {
+      return isBootstrappedStaff() ||
+             (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             (!('className' in data) || (data.className is string && data.className.size() <= 40)) &&
+             (!('linkedStudentCode' in data) || (data.linkedStudentCode is string && data.linkedStudentCode.size() <= 30)) &&
+             (!('linkedStudentClass' in data) || (data.linkedStudentClass is string && data.linkedStudentClass.size() <= 30)) &&
+             (!('assignedStaffClass' in data) || (data.assignedStaffClass is string && data.assignedStaffClass.size() <= 30)) &&
+             data.preferredMode in ['STUDENT', 'COUNSELOR'];
+    }
+
+    function isValidStudentMaster(data) {
+      return data.nisn is string && data.nisn.size() >= 4 && data.nisn.size() <= 30 &&
+             data.namaLengkap is string && data.namaLengkap.size() >= 2 && data.namaLengkap.size() <= 100 &&
+             data.kelas is string && data.kelas.size() >= 1 && data.kelas.size() <= 30 &&
+             data.kodeSiswa is string && data.kodeSiswa.size() >= 4 && data.kodeSiswa.size() <= 30 &&
+             data.pinAkses is string && data.pinAkses.size() >= 4 && data.pinAkses.size() <= 20 &&
+             data.claimedUid is string && data.claimedUid.size() <= 128 &&
+             data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128;
+    }
+
+    function isValidStudentAccess(data) {
+      return data.studentDocId is string && data.studentDocId.size() >= 1 && data.studentDocId.size() <= 128 &&
+             data.kodeSiswa is string && data.kodeSiswa.size() >= 4 && data.kodeSiswa.size() <= 30 &&
+             data.kelas is string && data.kelas.size() >= 1 && data.kelas.size() <= 30 &&
+             data.active is bool &&
+             data.createdByUid is string && data.createdByUid.size() >= 1 && data.createdByUid.size() <= 128;
+    }
+
+    function isValidEmergencyIdentityLog(data) {
+      return data.reportId is string && data.reportId.size() >= 1 && data.reportId.size() <= 128 &&
+             data.ticketCode is string && data.ticketCode.size() >= 3 && data.ticketCode.size() <= 20 &&
+             data.studentCode is string && data.studentCode.size() >= 1 && data.studentCode.size() <= 30 &&
+             data.reason is string && data.reason.size() >= 5 && data.reason.size() <= 500 &&
+             data.openedByUid is string && data.openedByUid == request.auth.uid &&
+             data.openedByName is string && data.openedByName.size() >= 1 && data.openedByName.size() <= 100;
+    }
+
+    function isValidReport(data) {
+      return data.reporterId is string && data.reporterId.size() >= 1 && data.reporterId.size() <= 128 &&
+             data.ticketCode is string && data.ticketCode.size() >= 3 && data.ticketCode.size() <= 20 &&
+             data.studentCode is string && data.studentCode.size() <= 30 &&
+             data.studentClassCode is string && data.studentClassCode.size() <= 30 &&
+             data.privacyCodeOnly is bool &&
+             data.category in ['VERBAL', 'FISIK', 'SIBER', 'SOSIAL', 'LAINNYA'] &&
+             (!('recipientType' in data) || data.recipientType in ['GURU_BK', 'GURU_LAINNYA']) &&
+             (!('assignedTeacherName' in data) || (data.assignedTeacherName is string && data.assignedTeacherName.size() >= 1 && data.assignedTeacherName.size() <= 100)) &&
+             (!('assignedTeacherRole' in data) || (data.assignedTeacherRole is string && data.assignedTeacherRole.size() >= 1 && data.assignedTeacherRole.size() <= 40)) &&
+             data.anonymous is bool &&
+             (!('studentName' in data) || (data.studentName is string && data.studentName.size() <= 80)) &&
+             (!('studentClass' in data) || (data.studentClass is string && data.studentClass.size() <= 40)) &&
+             data.incidentTimeLabel is string && data.incidentTimeLabel.size() >= 1 && data.incidentTimeLabel.size() <= 80 &&
+             data.locationArea is string && data.locationArea.size() >= 1 && data.locationArea.size() <= 60 &&
+             (!('latitude' in data) || data.latitude is number) &&
+             (!('longitude' in data) || data.longitude is number) &&
+             data.chronology is string && data.chronology.size() >= 5 && data.chronology.size() <= 3000 &&
+             data.evidenceNames is list && data.evidenceNames.size() <= 5 &&
+             (data.evidenceNames.size() == 0 || (data.evidenceNames[0] is string && data.evidenceNames[0].size() <= 300)) &&
+             data.status in ['BARU', 'DIPROSES', 'TINDAK_LANJUT', 'SELESAI'] &&
+             data.stageIndex is int && data.stageIndex >= 0 && data.stageIndex <= 3 &&
+             (!('bkMessage' in data) || (data.bkMessage is string && data.bkMessage.size() <= 1000)) &&
+             (!('waliKelasNotes' in data) || (data.waliKelasNotes is string && data.waliKelasNotes.size() <= 1000)) &&
+             (!('aiSummary' in data) || (data.aiSummary is string && data.aiSummary.size() <= 1000)) &&
+             data.aiPriority in ['TINGGI', 'SEDANG', 'RENDAH'] &&
+             (!('aiRecommendation' in data) || (data.aiRecommendation is string && data.aiRecommendation.size() <= 1500)) &&
+             (!('aiTrendNote' in data) || (data.aiTrendNote is string && data.aiTrendNote.size() <= 500)) &&
+             data.humanDecision in ['MENUNGGU', 'DISETUJUI', 'DIMODIFIKASI', 'DITOLAK'] &&
+             (!('humanDecisionNote' in data) || (data.humanDecisionNote is string && data.humanDecisionNote.size() <= 1000)) &&
+             (!('emergencyRevealedName' in data) || (data.emergencyRevealedName is string && data.emergencyRevealedName.size() <= 100)) &&
+             (!('emergencyRevealReason' in data) || (data.emergencyRevealReason is string && data.emergencyRevealReason.size() <= 500));
+    }
+
+    function isValidSosAlert(data) {
+      return data.reporterId is string && data.reporterId.size() >= 1 && data.reporterId.size() <= 128 &&
+             data.studentCode is string && data.studentCode.size() <= 30 &&
+             data.studentClassCode is string && data.studentClassCode.size() <= 30 &&
+             data.reporterName is string && data.reporterName.size() >= 1 && data.reporterName.size() <= 80 &&
+             data.locationLabel is string && data.locationLabel.size() >= 1 && data.locationLabel.size() <= 160 &&
+             data.latitude is number &&
+             data.longitude is number &&
+             data.hasGpsFix is bool &&
+             data.status in ['AKTIF', 'DITANGANI', 'SELESAI'] &&
+             (!('handledBy' in data) || (data.handledBy is string && data.handledBy.size() <= 100));
+    }
+
+    function isValidCounselingSession(data) {
+      return data.reporterId is string && data.reporterId.size() >= 1 && data.reporterId.size() <= 128 &&
+             data.reportId is string && data.reportId.size() >= 1 && data.reportId.size() <= 128 &&
+             data.ticketCode is string && data.ticketCode.size() >= 3 && data.ticketCode.size() <= 20 &&
+             data.studentLabel is string && data.studentLabel.size() >= 1 && data.studentLabel.size() <= 80 &&
+             data.scheduleLabel is string && data.scheduleLabel.size() >= 1 && data.scheduleLabel.size() <= 80 &&
+             data.counselorName is string && data.counselorName.size() >= 1 && data.counselorName.size() <= 80 &&
+             data.stageIndex is int && data.stageIndex >= 0 && data.stageIndex <= 3 &&
+             data.notes is string && data.notes.size() <= 1000 &&
+             data.status in ['TERJADWAL', 'BERLANGSUNG', 'SELESAI'];
+    }
+
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && request.auth.uid == adminId;
+      allow list, write: if false;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'preferredMode', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'className', 'preferredMode', 'linkedStudentCode', 'linkedStudentClass', 'assignedStaffClass', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'className', 'preferredMode', 'linkedStudentCode', 'linkedStudentClass', 'assignedStaffClass', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+    }
+
+    match /students/{studentId} {
+      allow get: if isSignedIn() && isValidId(studentId) && (isStaff() || existing().claimedUid == request.auth.uid);
+      allow list: if isSignedIn() && (isBootstrappedStaff() || existing().claimedUid == request.auth.uid);
+
+      allow create: if isSignedIn() &&
+                       isValidId(studentId) &&
+                       isStaff() &&
+                       incoming().createdByUid == request.auth.uid &&
+                       incoming().keys().hasAll(['nisn', 'namaLengkap', 'kelas', 'kodeSiswa', 'pinAkses', 'claimedUid', 'createdByUid', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['nisn', 'namaLengkap', 'kelas', 'kodeSiswa', 'pinAkses', 'claimedUid', 'createdByUid', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidStudentMaster(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(studentId) &&
+                       isValidStudentMaster(incoming()) &&
+                       incoming().createdByUid == existing().createdByUid &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       (
+                         (isStaff() && incoming().diff(existing()).affectedKeys().hasOnly(['nisn', 'namaLengkap', 'kelas', 'kodeSiswa', 'pinAkses', 'claimedUid', 'updatedAt'])) ||
+                         (existing().claimedUid == '' && incoming().claimedUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['claimedUid', 'updatedAt']))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(studentId) && isStaff();
+    }
+
+    // Secret-keyed credential lookup (list strictly disabled to prevent enumeration)
+    match /student_access/{accessId} {
+      allow get: if isSignedIn() && isValidId(accessId);
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       isValidId(accessId) &&
+                       isStaff() &&
+                       incoming().createdByUid == request.auth.uid &&
+                       incoming().keys().hasAll(['studentDocId', 'kodeSiswa', 'kelas', 'active', 'createdByUid', 'createdAt']) &&
+                       incoming().keys().hasOnly(['studentDocId', 'kodeSiswa', 'kelas', 'active', 'createdByUid', 'createdAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       isValidStudentAccess(incoming());
+
+      allow update, delete: if isSignedIn() && isValidId(accessId) && isStaff();
+    }
+
+    match /emergency_identity_logs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId) && isStaff();
+      allow list: if isSignedIn() && isBootstrappedStaff();
+
+      allow create: if isSignedIn() &&
+                       isValidId(logId) &&
+                       isStaff() &&
+                       incoming().keys().hasAll(['reportId', 'ticketCode', 'studentCode', 'reason', 'openedByUid', 'openedByName', 'createdAt']) &&
+                       incoming().keys().hasOnly(['reportId', 'ticketCode', 'studentCode', 'reason', 'openedByUid', 'openedByName', 'createdAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       isValidEmergencyIdentityLog(incoming());
+
+      allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow get: if isSignedIn() && isValidId(reportId) && (existing().reporterId == request.auth.uid || isStaff());
+      allow list: if isSignedIn() && (existing().reporterId == request.auth.uid || isBootstrappedStaff());
+
+      allow create: if isSignedIn() &&
+                       isValidId(reportId) &&
+                       incoming().reporterId == request.auth.uid &&
+                       incoming().status == 'BARU' &&
+                       incoming().stageIndex == 0 &&
+                       incoming().humanDecision == 'MENUNGGU' &&
+                       incoming().keys().hasAll(['reporterId', 'ticketCode', 'studentCode', 'studentClassCode', 'privacyCodeOnly', 'category', 'anonymous', 'incidentTimeLabel', 'locationArea', 'chronology', 'evidenceNames', 'status', 'stageIndex', 'aiPriority', 'humanDecision', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['reporterId', 'ticketCode', 'studentCode', 'studentClassCode', 'privacyCodeOnly', 'category', 'recipientType', 'assignedTeacherName', 'assignedTeacherRole', 'anonymous', 'studentName', 'studentClass', 'incidentTimeLabel', 'locationArea', 'latitude', 'longitude', 'chronology', 'evidenceNames', 'status', 'stageIndex', 'bkMessage', 'waliKelasNotes', 'aiSummary', 'aiPriority', 'aiRecommendation', 'aiTrendNote', 'humanDecision', 'humanDecisionNote', 'emergencyRevealedName', 'emergencyRevealReason', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidReport(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(reportId) &&
+                       isValidReport(incoming()) &&
+                       incoming().reporterId == existing().reporterId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       (
+                         (isStaff() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'stageIndex', 'recipientType', 'assignedTeacherName', 'assignedTeacherRole', 'bkMessage', 'waliKelasNotes', 'aiSummary', 'aiPriority', 'aiRecommendation', 'aiTrendNote', 'humanDecision', 'humanDecisionNote', 'emergencyRevealedName', 'emergencyRevealReason', 'updatedAt'])) ||
+                         (existing().reporterId == request.auth.uid && existing().status != 'SELESAI' && incoming().diff(existing()).affectedKeys().hasOnly(['aiSummary', 'aiPriority', 'aiRecommendation', 'aiTrendNote', 'updatedAt']))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(reportId) && isStaff();
+    }
+
+    match /sos_alerts/{alertId} {
+      allow get: if isSignedIn() && isValidId(alertId) && (existing().reporterId == request.auth.uid || isStaff());
+      allow list: if isSignedIn() && (existing().reporterId == request.auth.uid || isBootstrappedStaff());
+
+      allow create: if isSignedIn() &&
+                       isValidId(alertId) &&
+                       incoming().reporterId == request.auth.uid &&
+                       incoming().status == 'AKTIF' &&
+                       incoming().keys().hasAll(['reporterId', 'studentCode', 'studentClassCode', 'reporterName', 'locationLabel', 'latitude', 'longitude', 'hasGpsFix', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['reporterId', 'studentCode', 'studentClassCode', 'reporterName', 'locationLabel', 'latitude', 'longitude', 'hasGpsFix', 'status', 'handledBy', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidSosAlert(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(alertId) &&
+                       isValidSosAlert(incoming()) &&
+                       incoming().reporterId == existing().reporterId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       (
+                         (isStaff() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'handledBy', 'updatedAt'])) ||
+                         (existing().reporterId == request.auth.uid && existing().status != 'SELESAI' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(alertId) && isStaff();
+    }
+
+    match /counseling_sessions/{sessionId} {
+      allow get: if isSignedIn() && isValidId(sessionId) && (existing().reporterId == request.auth.uid || isStaff());
+      allow list: if isSignedIn() && (existing().reporterId == request.auth.uid || isBootstrappedStaff());
+
+      allow create: if isSignedIn() &&
+                       isValidId(sessionId) &&
+                       (incoming().reporterId == request.auth.uid || isStaff()) &&
+                       incoming().keys().hasAll(['reporterId', 'reportId', 'ticketCode', 'studentLabel', 'scheduleLabel', 'counselorName', 'stageIndex', 'notes', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['reporterId', 'reportId', 'ticketCode', 'studentLabel', 'scheduleLabel', 'counselorName', 'stageIndex', 'notes', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidCounselingSession(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(sessionId) &&
+                       isValidCounselingSession(incoming()) &&
+                       incoming().reporterId == existing().reporterId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       (isStaff() || (existing().reporterId == request.auth.uid && existing().status != 'SELESAI')) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['scheduleLabel', 'counselorName', 'stageIndex', 'notes', 'status', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(sessionId) && isStaff();
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "TICARE AI",
+  "description": "Trauma-Informed Counseling and Reporting Environment berbasis Artificial Intelligence (TICARE AI). Technology with Empathy — Sekolah Aman, Siswa Nyaman, Tanpa Perundungan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

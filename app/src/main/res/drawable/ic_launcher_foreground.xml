@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Protective Shield Silhouette centered in 66dp safe zone -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,23L29,33.5V51.5C29,67.6 39.7,82.4 54,86.5C68.3,82.4 79,67.6 79,51.5V33.5L54,23Z" />
+    <!-- Mint Care Heart inside Shield -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M54,67.5L52.1,65.8C45.3,59.6 40.8,55.5 40.8,50.5C40.8,46.4 44,43.2 48.1,43.2C50.4,43.2 52.6,44.3 54,46C55.4,44.3 57.6,43.2 59.9,43.2C64,43.2 67.2,46.4 67.2,50.5C67.2,55.5 62.7,59.6 55.9,65.8L54,67.5Z" />
+</vector>
